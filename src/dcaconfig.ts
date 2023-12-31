@@ -5,20 +5,22 @@ export const dcaconfig: DcaConfig[] = [
     {
         inputToken: "So11111111111111111111111111111111111111112",
         inputTokenName:"SOL",
-        outputToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        outputTokenName:"USDC",
+        outputToken: "GkidkAk5BeJLQQysVUvNUNU7nniG1vyPbUFiXTvJBX7M",
+        outputTokenName:"SOLLY",
+        inputTokenDecimals:9,
+        outputTokenDecimals:6,
         amounts: [
             {
-                mcap: 10000,
-                amnt: 1
+                mcap: 50000,
+                amnt: 0.01
             },
             {
                 mcap: 100000,
-                amnt: 0.5
+                amnt: 0.005
             },
             {
                 mcap: 1000000,
-                amnt: 0.1
+                amnt: 0.001
             },
 
         ],

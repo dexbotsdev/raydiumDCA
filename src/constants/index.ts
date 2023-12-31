@@ -5,12 +5,15 @@ import {
   Currency,
   LOOKUP_TABLE_CACHE,
   MAINNET_PROGRAM_ID,
+  Percent,
   RAYDIUM_MAINNET,
   Token,
   TOKEN_PROGRAM_ID,
+  TokenAmount,
   TxVersion,
 } from '@raydium-io/raydium-sdk';
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { getWalletTokenAccount } from "../modules/util";
 require("dotenv").config()
 
 export const SOLANA_RPC_ENDPOINT: string = process.env.RPC_ENDPOINT!;
@@ -39,10 +42,23 @@ export interface DcaConfig {
   inputTokenName: string;
   outputToken: string;
   outputTokenName: string;
+  inputTokenDecimals:number,
+  outputTokenDecimals:number,
   amounts: {
     mcap: number;
     amnt: number;
 }[];
   slippage: number;
   cron: string;
+}
+
+
+export type WalletTokenAccounts = Awaited<ReturnType<typeof getWalletTokenAccount>>
+export type TestTxInputInfo = {
+  outputToken: Token
+  targetPool: string
+  inputTokenAmount: TokenAmount
+  slippage: Percent
+  walletTokenAccounts: WalletTokenAccounts
+  wallet: Keypair
 }

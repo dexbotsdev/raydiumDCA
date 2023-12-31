@@ -17,17 +17,9 @@ import { formatAmmKeysById } from './formatAmmKeysById';
   buildAndSendTx,
   getWalletTokenAccount,
 } from './util';
-import { connection, makeTxVersion } from '../constants';
+import { connection, makeTxVersion, TestTxInputInfo } from '../constants';
 
-type WalletTokenAccounts = Awaited<ReturnType<typeof getWalletTokenAccount>>
-type TestTxInputInfo = {
-  outputToken: Token
-  targetPool: string
-  inputTokenAmount: TokenAmount
-  slippage: Percent
-  walletTokenAccounts: WalletTokenAccounts
-  wallet: Keypair
-}
+
 
  
 
@@ -38,7 +30,7 @@ const swapForDCA = async (input: TestTxInputInfo) =>{
   assert(targetPoolInfo, 'cannot find the target pool')
   const poolKeys = jsonInfo2PoolKeys(targetPoolInfo) as LiquidityPoolKeys
   console.log('Swapping Liquidity  ')
-
+ 
   // -------- step 1: coumpute amount out --------
   const { amountOut,
     minAmountOut,

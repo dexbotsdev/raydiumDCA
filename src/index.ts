@@ -40,13 +40,14 @@ const main = async () => {
             isTokenBought=true;
 
             const inputToken = DEFAULT_TOKEN.WSOL // USDC
-            const slippage = new Percent(1, 100)
+            const slippage = new Percent(0, 100)
             console.log('Swapping from intoken to out token ')
           
-             const outputToken = new Token(TOKEN_PROGRAM_ID, new PublicKey(tokenData?.tokenAddress), tokenData?.tokenDecimals, tokenData?.tokenName, tokenData?.tokenSymbol);
+             const outputToken = new Token(TOKEN_PROGRAM_ID, new PublicKey(tokenData?.tokenAddress), job.outputTokenDecimals, job.outputTokenName, tokenData?.tokenSymbol);
              const targetPool = tokenData?.pairAddress;
           
-             const inputTokenAmount = new TokenAmount(inputToken, subjob.amnt* 1000000000)
+             const inputTokenAmount = new TokenAmount(inputToken, subjob.amnt* 1000000000);
+             
              swapForDCA({
               outputToken,
               targetPool,
