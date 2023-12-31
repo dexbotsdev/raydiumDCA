@@ -1,119 +1,68 @@
-import fetch from "isomorphic-fetch";
-import { Jupiter, TOKEN_LIST_URL } from "@jup-ag/core";
-import { PublicKey, Connection } from "@solana/web3.js";
 import * as cron from "node-cron";
 import cronstrue from "cronstrue";
-import {Token, MINT_ADDRESSES, USER_KEYPAIR, SOLANA_RPC_ENDPOINT} from "./constants";
 import { dcaconfig } from './dcaconfig'
-
-const jupiterSwap = async ({
-  jupiter,
-  inputToken,
-  outputToken,
-  inputAmount,
-  slippage,
-}: {
-  jupiter: Jupiter;
-  inputToken?: Token;
-  outputToken?: Token;
-  inputAmount: number;
-  slippage: number;
-}) => {
-  try {
-      if (!inputToken || !outputToken) {
-          return null;
-      }
-
-      const inputAmountInSmallestUnits = inputToken 
-        ? Math.round(inputAmount * 10 ** inputToken.decimals)
-        : 0;
-      const routes = inputToken && outputToken
-        ? await jupiter.computeRoutes({
-            inputMint: new PublicKey(inputToken.address),
-            outputMint: new PublicKey(outputToken.address),
-            inputAmount: inputAmountInSmallestUnits, // raw input amount of tokens
-            slippage,
-            forceFetch: true,
-        })
-        : null;
-
-      if (routes && routes.routesInfos) {
-        // Prepare execute exchange
-        const { execute } = await jupiter.exchange({
-          routeInfo: routes!.routesInfos[0],
-        });
-        // Execute swap
-        // Force any to ignore TS misidentifying SwapResult type
-        const swapResult: any = await execute();
-        if (swapResult.error) {
-          console.log(swapResult.error);
-        } else {
-          // trying to keep these on one line
-          process.stdout.write(
-            `${swapResult.inputAmount / (10 ** inputToken.decimals)} `
-          ); 
-          process.stdout.write(`${inputToken.symbol} -> `);
-          process.stdout.write(
-            `${swapResult.outputAmount / (10 ** inputToken.decimals)} `
-          );
-          process.stdout.write(`${outputToken.symbol}: `);
-          console.log(`https://solscan.io/tx/${swapResult.txid}`);
-        }
-      } else {
-        console.log("Error during jupiter.computeRoutes().");
-      }
-  } catch (error) {
-    throw error;
-  }
-};
-
+import { getPairData } from "./modules/api";
+import { DEFAULT_TOKEN, connection} from "./constants";
+import { Percent, TOKEN_PROGRAM_ID, Token, TokenAmount } from "@raydium-io/raydium-sdk";
+import { getWalletTokenAccount } from "./modules/util";
+import { PublicKey } from "@solana/web3.js";
+import swapForDCA from "./modules/swapOnlyAmm";
+import { wallet } from "../config";
+ 
 const main = async () => {
   try {
-    console.log("Starting Jupiter DCA Bot");
-
-    const cluster = "mainnet-beta"; // Force mainnet, as this uses Jupiter which is not deployed on devnet/testnet
-    const connection = new Connection(SOLANA_RPC_ENDPOINT);
-    const jupiter = await Jupiter.load({
-        connection,
-        cluster: cluster,
-        user: USER_KEYPAIR,
-    });
-
-    // Fetch token list from Jupiter API
-    const tokens: Token[] = await (await fetch(TOKEN_LIST_URL[cluster])).json();
-
-    console.log("Warning! dcaconfig entries may be excluded due to:");
-    console.log("- invalid cron expression");
-    console.log("- inputToken or outputToken does not exist in MINT_ADDRESSES");
+    console.log("Starting RayDium DCA Bot");
+ 
+    console.log("WARNING! BOT NEEDS  PROPER DCA CONFIGURATION IN THE dcaconfig.ts file in the src folder :"); 
     console.log("Validating dcaconfig.ts ...");
     const filteredJobs = dcaconfig.filter(job => {
-      return (cron.validate(job.cron) 
-        && job.inputToken in MINT_ADDRESSES 
-        && job.outputToken in MINT_ADDRESSES
-      );
+      return (cron.validate(job.cron));
     });
+ 
     
     console.log("Scheduling swaps:");
     filteredJobs.map(job => {
-      console.log(`${job.amount} ${job.inputToken} for ${job.outputToken} ${cronstrue.toString(job.cron)}`);
+      job.amounts.map(subjob =>{
+         console.log(`If Mcap: ${subjob.mcap} Buy : ${subjob.amnt}  ${job.inputTokenName} for ${job.outputTokenName} ${cronstrue.toString(job.cron)}`);
+       })
     });
     
-    filteredJobs.forEach(job => {
-      const inputToken = tokens.find((t) => 
-        t.address == MINT_ADDRESSES[job.inputToken]
-      );
-      const outputToken = tokens.find((t) => 
-        t.address == MINT_ADDRESSES[job.outputToken]
-      );
+    filteredJobs.forEach(job => { 
+      return cron.schedule(job.cron, async () => { 
+        console.log(' Fetching Token Data for '+ job.outputTokenName);
+        const walletTokenAccounts = await getWalletTokenAccount(connection, wallet.publicKey)
 
-      return cron.schedule(job.cron, async () => {
-        await jupiterSwap({
-          jupiter,
-          inputToken,
-          outputToken,
-          inputAmount: job.amount,
-          slippage: job.slippage, // % slippage
-        });
+        const tokenData  = await getPairData(job.outputToken);
+        let isTokenBought = false;
+        job.amounts.map(subjob =>{ 
+          if(tokenData?.tokenMC <= subjob.mcap && !isTokenBought){
+            console.log('Buy Token '+job.outputTokenName+' MC is '+ tokenData?.tokenMC+'  Below  '+ subjob.mcap);
+            isTokenBought=true;
+
+            const inputToken = DEFAULT_TOKEN.WSOL // USDC
+            const slippage = new Percent(1, 100)
+            console.log('Swapping from intoken to out token ')
+          
+             const outputToken = new Token(TOKEN_PROGRAM_ID, new PublicKey(tokenData?.tokenAddress), tokenData?.tokenDecimals, tokenData?.tokenName, tokenData?.tokenSymbol);
+             const targetPool = tokenData?.pairAddress;
+          
+             const inputTokenAmount = new TokenAmount(inputToken, subjob.amnt* 1000000000)
+             swapForDCA({
+              outputToken,
+              targetPool,
+              inputTokenAmount,
+              slippage,
+              walletTokenAccounts,
+              wallet: wallet,
+            }).then(({ txids }) => {
+              
+              console.log('txids', txids)
+            })
+             
+             
+          } 
+        })
+
       });
     });
   } catch (error) {
