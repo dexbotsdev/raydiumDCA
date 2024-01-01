@@ -49,7 +49,7 @@ const main = async () => {
              const targetPool = tokenData?.pairAddress;
           
              const inputTokenAmount = new TokenAmount(inputToken, subjob.amnt* 1000000000);
-             const traded :string= inputToken.mint.toString()+subjob.mcap;
+             const traded :string= job.outputToken.toString()+subjob.mcap;
 
              if(!tradesPlaced.includes(traded)){
               tradesPlaced.push(traded); 
