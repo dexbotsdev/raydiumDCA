@@ -9,6 +9,8 @@ import { PublicKey } from "@solana/web3.js";
 import swapForDCA from "./modules/swapOnlyAmm";
 import { wallet } from "../config";
  
+
+const tradesPlaced: string[]=[];
 const main = async () => {
   try {
     console.log("Starting RayDium DCA Bot");
@@ -47,18 +49,25 @@ const main = async () => {
              const targetPool = tokenData?.pairAddress;
           
              const inputTokenAmount = new TokenAmount(inputToken, subjob.amnt* 1000000000);
-             
-             swapForDCA({
-              outputToken,
-              targetPool,
-              inputTokenAmount,
-              slippage,
-              walletTokenAccounts,
-              wallet: wallet,
-            }).then(({ txids }) => {
-              
-              console.log('txids', txids)
-            })
+             const traded :string= inputToken.mint.toString()+subjob.mcap;
+
+             if(!tradesPlaced.includes(traded)){
+              tradesPlaced.push(traded); 
+              swapForDCA({
+               outputToken,
+               targetPool,
+               inputTokenAmount,
+               slippage,
+               walletTokenAccounts,
+               wallet: wallet,
+             }).then(({ txids }) => {
+               
+               console.log('txids', txids)
+             })
+             } else {
+              console.log(' Mcap Level Breached and Token Bought earlier, Will Not Repeat Again '+ traded);
+             }
+            
              
              
           } 
